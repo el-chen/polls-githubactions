@@ -1,0 +1,46 @@
+name: Run tests
+on: push
+jobs:
+  execute_tests:
+    name: Install requirements and execute tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack on start
+        run: >
+          curl
+          -X POST
+          -H 'Content-Type: application/json'
+          --data '{"text": "Build started", "blocks": [{"type": "header", "text": {"type": "plain_text", "text": ":building_construction:Build started"}}, {"type": "section", "fields": [{"type": "mrkdwn", "text": "*Repository*:\n${{github.repository}}"}, {"type": "mrkdwn", "text": "*User*:\n${{github.event.pusher.name}}"},  {"type": "mrkdwn", "text": "*Branch*:\n${{github.event.ref}}"}, {"type": "mrkdwn", "text": "*Commit*:\nSee <${{github.event.head_commit.url}}|here>"}]}]}'
+          --url ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Update package list
+        run: sudo apt update
+      - name: Install pip
+        run: sudo apt install python3-pip
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Install requirements
+        run: pip install -r requirements.txt
+      - name: Copy environment file
+        run: cp .env.ci .env
+      - name: Check style guide and conventions
+        run: pycodestyle .
+      - name: Execute tests
+        env:
+          DJANGO_SETTINGS_MODULE: mysite.settings
+        run: pytest
+      - name: Notify Slack on success
+        if: ${{ success() }}
+        run: >
+          curl
+          -X POST
+          -H 'Content-Type: application/json'
+          --data '{"text": ":white_check_mark:Build successful", "type": "plain_text"}'
+          --url ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Notify Slack on failure
+        if: ${{ failure() }}
+        run: >
+          curl
+          -X POST
+          -H 'Content-Type: application/json'
+          --data '{"text": ":x:Build failed", "type": "plain_text"}'
+          --url ${{ secrets.SLACK_WEBHOOK_URL }}
