@@ -1,4 +1,4 @@
-name: Pull request on staging
+name: Pull request on any bramch v1
 on: push
 jobs:
   execute_tests:
